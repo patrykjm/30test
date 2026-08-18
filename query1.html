@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>Zapytanie 1 – Osoby powyżej 30 lat</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: left; }
+    th { background: #f0f0f0; }
+    pre { background: #f5f5f5; padding: 12px; border-radius: 6px; overflow-x: auto; }
+    a { color: #0066cc; }
+  </style>
+</head>
+<body>
+  <p><a href="index.html">← Powrót</a></p>
+  <h1>Osoby powyżej 30 lat</h1>
+
+  <h3>Zapytanie SQL:</h3>
+  <pre>SELECT id, imie, nazwisko, wiek 
+FROM osoby 
+WHERE wiek > 30 
+ORDER BY wiek DESC;</pre>
+
+  <div id="status">Ładowanie...</div>
+  <table id="tabela">
+    <thead></thead>
+    <tbody></tbody>
+  </table>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+  <script>
+    const SQL_QUERY = `
+      SELECT id, imie, nazwisko, wiek 
+      FROM osoby 
+      WHERE wiek > 30 
+      ORDER BY wiek DESC
+    `;
+
+    async function run() {
+      const status = document.getElementById('status');
+      const thead = document.querySelector('#tabela thead');
+      const tbody = document.querySelector('#tabela tbody');
+
+      try {
+        const SQL = await initSqlJs({
+          locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}`
+        });
+
+        const response = await fetch('dane.db');
+        const buffer = await response.arrayBuffer();
+        const db = new SQL.Database(new Uint8Array(buffer));
+
+        const result = db.exec(SQL_QUERY);
+
+        if (result.length === 0 || result[0].values.length === 0) {
+          status.textContent = 'Brak wyników.';
+          return;
+        }
+
+        // Nagłówki
+        const columns = result[0].columns;
+        thead.innerHTML = '<tr>' + columns.map(c => `<th>${c}</th>`).join('') + '</tr>';
+
+        // Wiersze
+        result[0].values.forEach(row => {
+          const tr = document.createElement('tr');
+          row.forEach(cell => {
+            const td = document.createElement('td');
+            td.textContent = cell ?? '';
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+        });
+
+        status.textContent = `Znaleziono ${result[0].values.length} rekordów.`;
+        db.close();
+      } catch (err) {
+        status.textContent = 'Błąd: ' + err.message;
+        console.error(err);
+      }
+    }
+
+    run();
+  </script>
+</body>
+</html>

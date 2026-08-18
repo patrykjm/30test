@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>Tabela z SQLite</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: left; }
+    th { background: #f0f0f0; }
+    #status { color: #666; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Dane z SQLite</h1>
+  <div id="status">Ładowanie bazy...</div>
+  <table id="tabela">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Imię</th>
+        <th>Nazwisko</th>
+        <th>Wiek</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <ul>
+  <li><a href="query1.html">Osoby powyżej 30 lat</a></li>
+</ul>
+
+  <!-- sql.js z CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+  <script>
+    async function main() {
+      const status = document.getElementById('status');
+      const tbody = document.querySelector('#tabela tbody');
+
+      try {
+        // Inicjalizacja sql.js
+        const SQL = await initSqlJs({
+          locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}`
+        });
+
+        // Pobranie pliku bazy
+        const response = await fetch('dane.db');
+        if (!response.ok) throw new Error('Nie udało się pobrać pliku dane.db');
+        const buffer = await response.arrayBuffer();
+
+        // Otwarcie bazy
+        const db = new SQL.Database(new Uint8Array(buffer));
+
+        // Zapytanie
+        const wynik = db.exec("SELECT id, imie, nazwisko, wiek FROM osoby ORDER BY id");
+
+        if (wynik.length === 0) {
+          status.textContent = 'Brak danych w tabeli.';
+          return;
+        }
+
+        // Wypełnienie tabeli
+        const rows = wynik[0].values;
+        rows.forEach(row => {
+          const tr = document.createElement('tr');
+          row.forEach(cell => {
+            const td = document.createElement('td');
+            td.textContent = cell;
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+        });
+
+        status.textContent = `Załadowano ${rows.length} rekordów.`;
+        db.close();
+      } catch (err) {
+        status.textContent = 'Błąd: ' + err.message;
+        console.error(err);
+      }
+    }
+
+    main();
+  </script>
+</body>
+</html>
